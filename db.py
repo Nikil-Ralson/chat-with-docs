@@ -4,6 +4,7 @@ load_dotenv()
 from os import getenv
 from pgvector.peewee import VectorField
 from peewee import PostgresqlDatabase, Model, TextField, ForeignKeyField
+from peewee import DatabaseProxy
 
 db = PostgresqlDatabase(
     getenv("POSTGRES_DB_NAME"),
@@ -44,6 +45,11 @@ class DocumentInformationChunks(Model):
 #DocumentInformationChunks.add_index("embedding vector_cosine_ops", using="diskann")
 
 db.connect()
+
+def get_db():
+    if db.is_closed():
+        db.connect()
+    return db
 
 db.execute_sql("CREATE EXTENSION IF NOT EXISTS vector")
 

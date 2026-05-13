@@ -123,3 +123,14 @@ def create_tag(name: str):
         raise HTTPException(status_code=400, detail="Tag already exists")
     tag = Tags.create(name=name)
     return {"id": tag.id, "name": tag.name}
+
+@app.middleware("http")
+async def db_connection_middleware(request, call_next):
+    if db.is_closed():
+        db.connect()
+    try:
+        response = await call_next(request)
+    finally:
+        if not db.is_closed():
+            db.close()
+    return response
