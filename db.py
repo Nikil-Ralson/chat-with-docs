@@ -11,6 +11,7 @@ db = PostgresqlDatabase(
     port=getenv("POSTGRES_DB_PORT"),
     user=getenv("POSTGRES_DB_USER"),
     password=getenv("POSTGRES_DB_PASSWORD"),
+    sslmode="require",
 )
 
 class Documents(Model):
