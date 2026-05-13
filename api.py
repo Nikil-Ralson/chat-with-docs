@@ -11,13 +11,16 @@ from utils import find
 
 app = FastAPI(title="chat with docs API")
 
-@app.on_event("startup")
-async def startup_event():
+@app.middleware("http")
+async def db_connection_middleware(request, call_next):
+    if db.is_closed():
+        db.connect()
     try:
-        get_embedding("warmup")
-        print("Embedding model loaded successfully!")
-    except Exception as e:
-        print(f"Warning: Could not preload embedding model: {e}")
+        response = await call_next(request)
+    finally:
+        if not db.is_closed():
+            db.close()
+    return response
 
 @app.get("/")
 def root():
@@ -100,7 +103,7 @@ def chat_with_docs(request: ChatRequest):
             DocumentInformationChunks,
             DocumentInformationChunks.embedding.cosine_distance(query_embedding).alias("distance")
         )
-        .order_by(db.execute_sql("distance"))
+        .order_by(db.SQL("distance"))
         .limit(request.top_k)
     )
     chunks = list(chunks)
@@ -108,7 +111,7 @@ def chat_with_docs(request: ChatRequest):
     if not chunks:
         return {"answer": "No relevant information found in documents.", " sources": []}
     
-    knowledge = "\n".join(f"- {c.chunk} for c in chunks")
+    knowledge = "\n".join(f"- {c.chunk}" for c in chunks)
     system_prompt = RESPOND_TO_MESSAGE_SYSTEM_PROMPT.replace("{{knowledge}}", knowledge)
     answer = chat(system_prompt, request.question)
 
@@ -132,13 +135,3 @@ def create_tag(name: str):
     tag = Tags.create(name=name)
     return {"id": tag.id, "name": tag.name}
 
-@app.middleware("http")
-async def db_connection_middleware(request, call_next):
-    if db.is_closed():
-        db.connect()
-    try:
-        response = await call_next(request)
-    finally:
-        if not db.is_closed():
-            db.close()
-    return response
