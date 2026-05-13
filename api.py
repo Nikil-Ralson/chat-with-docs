@@ -11,6 +11,14 @@ from utils import find
 
 app = FastAPI(title="chat with docs API")
 
+@app.on_event("startup")
+async def startup_event():
+    try:
+        get_embedding("warmup")
+        print("Embedding model loaded successfully!")
+    except Exception as e:
+        print(f"Warning: Could not preload embedding model: {e}")
+
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Welcome to the chat with docs API!"}
